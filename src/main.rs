@@ -5,7 +5,9 @@ use rand::Rng;
 use std::env;
 use std::io::BufReader;
 use std::io::BufRead;
+use std::io::Write;
 use std::fs::File;
+use std::net::TcpListener;
 
 
 fn load_quotes(filename: String) -> Vec<String>{
@@ -33,7 +35,7 @@ fn load_quotes(filename: String) -> Vec<String>{
     quotes
 }
 
-fn choose_random_one(quotes: Vec<String>) -> String {
+fn choose_random_one(quotes: &Vec<String>) -> String {
     let random_index = rand::thread_rng().gen_range(0, quotes.len());
     quotes[random_index].clone()
 }
@@ -45,6 +47,15 @@ fn main() {
 		println!("File with quotes is not specified!");
 	} else {
 		let loaded_quotes = load_quotes(args[1].clone());
-		println!("{}", choose_random_one(loaded_quotes));
-	}
+		// println!("{}", choose_random_one(loaded_quotes));
+
+		let listener = TcpListener::bind("127.0.0.1:17").unwrap();
+		println!("Listening on port 17.");
+
+		for stream in listener.incoming() {
+			let mut stream = stream.unwrap();
+			let quote = choose_random_one(&loaded_quotes);
+			stream.write(&quote.into_bytes()).unwrap();
+		}
+	}	
 }

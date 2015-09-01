@@ -35,9 +35,9 @@ fn load_quotes(filename: String) -> Vec<String>{
     quotes
 }
 
-fn choose_random_one(quotes: &Vec<String>) -> String {
+fn choose_random_one(quotes: &Vec<String>) -> &String {
     let random_index = rand::thread_rng().gen_range(0, quotes.len());
-    quotes[random_index].clone()
+    &quotes[random_index]
 }
 
 fn main() {
@@ -54,8 +54,8 @@ fn main() {
 
 		for stream in listener.incoming() {
 			let mut stream = stream.unwrap();
-			let quote = choose_random_one(&loaded_quotes);
-			stream.write(&quote.into_bytes()).unwrap();
+			let ref quote = choose_random_one(&loaded_quotes);
+			stream.write(&quote.as_bytes()).unwrap();
 		}
 	}	
 }

@@ -8,6 +8,7 @@ use std::io::BufRead;
 use std::io::Write;
 use std::fs::File;
 use std::net::TcpListener;
+use std::thread;
 
 
 fn load_quotes(filename: String) -> Vec<String>{
@@ -47,15 +48,19 @@ fn main() {
 		println!("File with quotes is not specified!");
 	} else {
 		let loaded_quotes = load_quotes(args[1].clone());
-		// println!("{}", choose_random_one(loaded_quotes));
 
-		let listener = TcpListener::bind("127.0.0.1:17").unwrap();
-		println!("Listening on port 17.");
+		let tcp_listener_handle = thread::spawn(move || {
+			let listener = TcpListener::bind("127.0.0.1:17").unwrap();
+			println!("Listening on port 17.");
 
-		for stream in listener.incoming() {
-			let mut stream = stream.unwrap();
-			let ref quote = choose_random_one(&loaded_quotes);
-			stream.write(&quote.as_bytes()).unwrap();
-		}
-	}	
+			for stream in listener.incoming() {
+				let mut stream = stream.unwrap();
+				let ref quote = choose_random_one(&loaded_quotes);
+				stream.write(&quote.as_bytes()).unwrap();
+			}
+		});
+
+		tcp_listener_handle.join().unwrap();
+	}
+
 }

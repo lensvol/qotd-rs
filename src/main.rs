@@ -6,8 +6,11 @@ use std::env;
 use std::io::BufReader;
 use std::io::BufRead;
 use std::io::Write;
+
 use std::fs::File;
 use std::net::TcpListener;
+use std::net::UdpSocket;
+use std::sync::Arc;
 use std::thread;
 
 
@@ -47,7 +50,11 @@ fn main() {
 	if args.len() == 1 {
 		println!("File with quotes is not specified!");
 	} else {
+
 		let loaded_quotes = load_quotes(args[1].clone());
+		let shared_quotes = Arc::new(loaded_quotes);
+		let tcp_quotes = shared_quotes.clone();
+		let udp_quotes = shared_quotes.clone();
 
 		let tcp_listener_handle = thread::spawn(move || {
 			let listener = TcpListener::bind("127.0.0.1:17").unwrap();
@@ -55,12 +62,24 @@ fn main() {
 
 			for stream in listener.incoming() {
 				let mut stream = stream.unwrap();
-				let ref quote = choose_random_one(&loaded_quotes);
+				let ref quote = choose_random_one(&tcp_quotes);
 				stream.write(&quote.as_bytes()).unwrap();
 			}
 		});
 
+		let udp_listener_handle = thread::spawn(move || {
+			let socket = UdpSocket::bind("127.0.0.1:17").unwrap();
+			loop {
+				let mut buf = [0; 10];
+				let (_, src) = socket.recv_from(&mut buf).unwrap();
+
+				let ref quote = choose_random_one(&udp_quotes);
+				socket.send_to(&quote.as_bytes(), &src).unwrap();
+			};
+    	});
+
 		tcp_listener_handle.join().unwrap();
+		udp_listener_handle.join().unwrap();
 	}
 
 }

@@ -39,6 +39,28 @@ fn load_quotes(filename: String) -> Vec<String>{
     quotes
 }
 
+fn tcp_handler(bind_addr: &str, quotes: &Vec<String>) {
+	let listener = TcpListener::bind(bind_addr).unwrap();
+	println!("Listening on port 17.");
+
+	for stream in listener.incoming() {
+		let mut stream = stream.unwrap();
+		let ref quote = choose_random_one(quotes);
+		stream.write(&quote.as_bytes()).unwrap();
+	}
+}
+
+fn udp_handler(bind_addr: &str, quotes: &Vec<String>) {
+	let socket = UdpSocket::bind(bind_addr).unwrap();
+	loop {
+		let mut buf = [0; 10];
+		let (_, src) = socket.recv_from(&mut buf).unwrap();
+
+		let ref quote = choose_random_one(quotes);
+		socket.send_to(&quote.as_bytes(), &src).unwrap();
+	};	
+}
+
 fn choose_random_one(quotes: &Vec<String>) -> &String {
     let random_index = rand::thread_rng().gen_range(0, quotes.len());
     &quotes[random_index]
@@ -57,25 +79,11 @@ fn main() {
 		let udp_quotes = shared_quotes.clone();
 
 		let tcp_listener_handle = thread::spawn(move || {
-			let listener = TcpListener::bind("127.0.0.1:17").unwrap();
-			println!("Listening on port 17.");
-
-			for stream in listener.incoming() {
-				let mut stream = stream.unwrap();
-				let ref quote = choose_random_one(&tcp_quotes);
-				stream.write(&quote.as_bytes()).unwrap();
-			}
+			tcp_handler("127.0.0.1:17", &tcp_quotes);
 		});
 
 		let udp_listener_handle = thread::spawn(move || {
-			let socket = UdpSocket::bind("127.0.0.1:17").unwrap();
-			loop {
-				let mut buf = [0; 10];
-				let (_, src) = socket.recv_from(&mut buf).unwrap();
-
-				let ref quote = choose_random_one(&udp_quotes);
-				socket.send_to(&quote.as_bytes(), &src).unwrap();
-			};
+			udp_handler("127.0.0.1:17", &udp_quotes);
     	});
 
 		tcp_listener_handle.join().unwrap();

@@ -1,8 +1,9 @@
 extern crate rand;
+extern crate clap;
 
+use clap::App;
 use rand::Rng;
 
-use std::env;
 use std::io::BufReader;
 use std::io::BufRead;
 use std::io::Write;
@@ -39,9 +40,8 @@ fn load_quotes(filename: String) -> Vec<String>{
     quotes
 }
 
-fn tcp_handler(bind_addr: &str, quotes: &Vec<String>) {
-	let listener = TcpListener::bind(bind_addr).unwrap();
-	println!("Listening on port 17.");
+fn tcp_handler(bind_addr: String, quotes: &Vec<String>) {
+	let listener = TcpListener::bind(bind_addr.trim()).unwrap();
 
 	for stream in listener.incoming() {
 		let mut stream = stream.unwrap();
@@ -50,8 +50,8 @@ fn tcp_handler(bind_addr: &str, quotes: &Vec<String>) {
 	}
 }
 
-fn udp_handler(bind_addr: &str, quotes: &Vec<String>) {
-	let socket = UdpSocket::bind(bind_addr).unwrap();
+fn udp_handler(bind_addr: String, quotes: &Vec<String>) {
+	let socket = UdpSocket::bind(bind_addr.trim()).unwrap();
 	loop {
 		let mut buf = [0; 10];
 		let (_, src) = socket.recv_from(&mut buf).unwrap();
@@ -67,27 +67,35 @@ fn choose_random_one(quotes: &Vec<String>) -> &String {
 }
 
 fn main() {
-	let args: Vec<String> = env::args().collect();
+    let matches = App::new("qotd-rs")
+						.version("0.1")
+						.author("Kirill Borisov <borisov.kir@gmail.com>")
+	                    .args_from_usage(
+							"-b --bind=[ADDR] 'Bind at specified address.'
+							<FILENAME> 'Sets quotes file to use.'")
+						.get_matches();
 
-	if args.len() == 1 {
-		println!("File with quotes is not specified!");
-	} else {
+	let bind_addr_str = matches.value_of("ADDR").unwrap_or("127.0.0.1:17").to_string();
+	let quotes_fn = matches.value_of("FILENAME").unwrap().to_string();
 
-		let loaded_quotes = load_quotes(args[1].clone());
-		let shared_quotes = Arc::new(loaded_quotes);
-		let tcp_quotes = shared_quotes.clone();
-		let udp_quotes = shared_quotes.clone();
+	let shared_quotes = Arc::new(load_quotes(quotes_fn));
 
-		let tcp_listener_handle = thread::spawn(move || {
-			tcp_handler("127.0.0.1:17", &tcp_quotes);
-		});
+	let udp_bind_addr = bind_addr_str.clone();
+	let tcp_bind_addr = bind_addr_str.clone();
+	let tcp_quotes = shared_quotes.clone();
+	let udp_quotes = shared_quotes.clone();
 
-		let udp_listener_handle = thread::spawn(move || {
-			udp_handler("127.0.0.1:17", &udp_quotes);
-    	});
+	println!("TCP server listening on port {}.", tcp_bind_addr);
+	println!("UDP server listening on port {}.", udp_bind_addr);
 
-		tcp_listener_handle.join().unwrap();
-		udp_listener_handle.join().unwrap();
-	}
+	let tcp_listener_handle = thread::spawn(move || {
+		tcp_handler(udp_bind_addr, &tcp_quotes);
+	});
 
+	let udp_listener_handle = thread::spawn(move || {
+		udp_handler(tcp_bind_addr.clone(), &udp_quotes);
+	});
+
+	tcp_listener_handle.join().unwrap();
+	udp_listener_handle.join().unwrap();
 }

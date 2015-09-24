@@ -7,3 +7,4 @@ authors = ["Kirill Borisov <lensvol@gmail.com>"]
 rand = "0.3.0"
 chrono = "0.2.16"
 clap = "1.4.0"
+byteorder = "0.3.13"

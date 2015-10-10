@@ -10,6 +10,8 @@ use std::io::BufReader;
 use std::io::BufRead;
 use std::io::Read;
 use std::io::Write;
+use std::io::Seek;
+use std::io::SeekFrom;
 
 use std::fs::File;
 use std::net::TcpListener;
@@ -27,6 +29,7 @@ struct StrfileHeader {
     shortest_length: u32,
     flags: u32,
     delim: u8,
+    offsets: Vec<u32>,
 }
 
 
@@ -38,6 +41,7 @@ fn read_strfile_header(handle: File) -> StrfileHeader{
         shortest_length: 0,
         flags: 0,
         delim: 0,
+        offsets: vec![],
     };
 	let mut header_field = [0u8; 21];
 
@@ -52,6 +56,15 @@ fn read_strfile_header(handle: File) -> StrfileHeader{
 	header.flags = buf.read_u32::<BigEndian>().unwrap();
 	header.delim = header_field[20];
 
+    file.seek(SeekFrom::Current(3)).unwrap();
+    for _ in 1 .. header.number_of_strings + 1{
+        let mut raw_offset = [0u8; 4];
+        file.read(&mut raw_offset).unwrap();
+        let mut buf = Cursor::new(&raw_offset[..]);
+        let offset = buf.read_u32::<BigEndian>().unwrap();
+        header.offsets.push(offset);
+    }
+    
     let header = header;
     header
 }

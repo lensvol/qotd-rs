@@ -20,28 +20,51 @@ use std::thread;
 use byteorder::{BigEndian, ReadBytesExt};
 
 
-fn print_strfile_header(handle: File) {
+struct StrfileHeader {
+    version: u32,
+    number_of_strings: u32,
+    longest_length: u32,
+    shortest_length: u32,
+    flags: u32,
+    delim: u8,
+}
+
+
+fn read_strfile_header(handle: File) -> StrfileHeader{
+    let mut header = StrfileHeader {
+        version: 1,
+        number_of_strings: 0,
+        longest_length: 0,
+        shortest_length: 0,
+        flags: 0,
+        delim: 0,
+    };
 	let mut header_field = [0u8; 21];
 
     let mut file = BufReader::new(&handle);
     file.read(&mut header_field).unwrap();
 	let mut buf = Cursor::new(&header_field[..]);
 
-	let version: u32 = buf.read_u32::<BigEndian>().unwrap();
-	let number_of_strings: u32 = buf.read_u32::<BigEndian>().unwrap();
-	let longest_length = buf.read_u32::<BigEndian>().unwrap();
-	let shortest_length = buf.read_u32::<BigEndian>().unwrap();
-	let flags = buf.read_u32::<BigEndian>().unwrap();
-	let delim = header_field[20];
+	header.version = buf.read_u32::<BigEndian>().unwrap();
+	header.number_of_strings = buf.read_u32::<BigEndian>().unwrap();
+	header.longest_length = buf.read_u32::<BigEndian>().unwrap();
+	header.shortest_length = buf.read_u32::<BigEndian>().unwrap();
+	header.flags = buf.read_u32::<BigEndian>().unwrap();
+	header.delim = header_field[20];
 
-	println!("Version:\t{}", version);
-	println!("Strings:\t{}", number_of_strings);
-	println!("Longest:\t{}", longest_length);
-	println!("Shortest:\t{}", shortest_length);
-	println!("Delimeter:\t{:?}", delim as char);
+    let header = header;
+    header
+}
+
+fn display_strfile_header(header: StrfileHeader) {
+    println!("Version:\t{}", header.version);
+	println!("Strings:\t{}", header.number_of_strings);
+	println!("Longest:\t{}", header.longest_length);
+	println!("Shortest:\t{}", header.shortest_length);
+	println!("Delimeter:\t{:?}", header.delim as char);
 
 	let flag_set = |mask| {
-		if flags & mask == 1 { "yes" } else { "no" }
+		if header.flags & mask == 1 { "yes" } else { "no" }
 	};
 
 	println!("Randomized:\t{}", flag_set(0x1));	
@@ -115,8 +138,11 @@ fn main() {
 	let quotes_fn = matches.value_of("FILENAME").unwrap().to_string();
 
 	match File::open(quotes_fn.clone() + ".dat") {
-		Ok(file) => print_strfile_header(file),
-		Err(e) => {println!("{:?}", e);}
+		Ok(file) => {
+            let h = read_strfile_header(file);
+            display_strfile_header(h);
+        }
+		Err(e) => println!("{:?}", e)
 	};
 
 	let shared_quotes = Arc::new(load_raw_quotes(quotes_fn));

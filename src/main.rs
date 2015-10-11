@@ -12,6 +12,7 @@ use std::io::Read;
 use std::io::Write;
 use std::io::Seek;
 use std::io::SeekFrom;
+use std::io::Error;
 
 use std::fs::File;
 use std::net::TcpListener;
@@ -33,7 +34,7 @@ struct StrfileHeader {
 }
 
 
-fn read_strfile_header(handle: File) -> StrfileHeader{
+fn read_strfile_header(filename: String) -> Result<StrfileHeader, Error> {
     let mut header = StrfileHeader {
         version: 1,
         number_of_strings: 0,
@@ -45,8 +46,9 @@ fn read_strfile_header(handle: File) -> StrfileHeader{
     };
 	let mut header_field = [0u8; 21];
 
+    let handle = File::open(filename.clone()).unwrap();
     let mut file = BufReader::new(&handle);
-    file.read(&mut header_field).unwrap();
+    try!(file.read(&mut header_field));
 	let mut buf = Cursor::new(&header_field[..]);
 
 	header.version = buf.read_u32::<BigEndian>().unwrap();
@@ -56,17 +58,17 @@ fn read_strfile_header(handle: File) -> StrfileHeader{
 	header.flags = buf.read_u32::<BigEndian>().unwrap();
 	header.delim = header_field[20];
 
-    file.seek(SeekFrom::Current(3)).unwrap();
-    for _ in 1 .. header.number_of_strings + 1{
+    try!(file.seek(SeekFrom::Current(3)));
+    for _ in 1 .. header.number_of_strings + 1 {
         let mut raw_offset = [0u8; 4];
-        file.read(&mut raw_offset).unwrap();
+        try!(file.read(&mut raw_offset));
         let mut buf = Cursor::new(&raw_offset[..]);
         let offset = buf.read_u32::<BigEndian>().unwrap();
         header.offsets.push(offset);
     }
     
     let header = header;
-    header
+    Ok(header)
 }
 
 fn display_strfile_header(header: StrfileHeader) {
@@ -113,24 +115,32 @@ fn load_raw_quotes(filename: String) -> Vec<String> {
 }
 
 fn tcp_handler(bind_addr: String, quotes: &Vec<String>) {
-	let listener = TcpListener::bind(bind_addr.trim()).unwrap();
+	match TcpListener::bind(bind_addr.trim()) {
+        Ok(listener) => {
+	        for stream in listener.incoming() {
+                let mut stream = stream.unwrap();
+                let ref quote = choose_random_one(quotes);
+                stream.write(&quote.as_bytes()).unwrap();
+            }
+        },
+        Err(e) => println!("{:?}", e)
+    }
 
-	for stream in listener.incoming() {
-		let mut stream = stream.unwrap();
-		let ref quote = choose_random_one(quotes);
-		stream.write(&quote.as_bytes()).unwrap();
-	}
 }
 
 fn udp_handler(bind_addr: String, quotes: &Vec<String>) {
-	let socket = UdpSocket::bind(bind_addr.trim()).unwrap();
-	loop {
-		let mut buf = [0; 10];
-		let (_, src) = socket.recv_from(&mut buf).unwrap();
+	match  UdpSocket::bind(bind_addr.trim()) {
+        Ok(socket) => {
+	        loop {
+		        let mut buf = [0; 10];
+		        let (_, src) = socket.recv_from(&mut buf).unwrap();
 
-		let ref quote = choose_random_one(quotes);
-		socket.send_to(&quote.as_bytes(), &src).unwrap();
-	};	
+		        let ref quote = choose_random_one(quotes);
+		        socket.send_to(&quote.as_bytes(), &src).unwrap();
+	        }
+        },
+        Err(e) => println!("{:?}", e),
+    }
 }
 
 fn choose_random_one(quotes: &Vec<String>) -> &String {
@@ -150,11 +160,8 @@ fn main() {
 	let bind_addr_str = matches.value_of("ADDR").unwrap_or("127.0.0.1:17").to_string();
 	let quotes_fn = matches.value_of("FILENAME").unwrap().to_string();
 
-	match File::open(quotes_fn.clone() + ".dat") {
-		Ok(file) => {
-            let h = read_strfile_header(file);
-            display_strfile_header(h);
-        }
+	match read_strfile_header(quotes_fn.clone() + ".dat") {
+		Ok(h) => display_strfile_header(h),
 		Err(e) => println!("{:?}", e)
 	};
 

@@ -46,7 +46,7 @@ fn read_strfile_header(filename: String) -> Result<StrfileHeader, Error> {
     };
 	let mut header_field = [0u8; 21];
 
-    let handle = File::open(filename.clone()).unwrap();
+    let handle = try!(File::open(filename.clone()));
     let mut file = BufReader::new(&handle);
     try!(file.read(&mut header_field));
 	let mut buf = Cursor::new(&header_field[..]);
@@ -71,7 +71,7 @@ fn read_strfile_header(filename: String) -> Result<StrfileHeader, Error> {
     Ok(header)
 }
 
-fn display_strfile_header(header: StrfileHeader) {
+fn display_strfile_header(header: &StrfileHeader) {
     println!("Version:\t{}", header.version);
 	println!("Strings:\t{}", header.number_of_strings);
 	println!("Longest:\t{}", header.longest_length);
@@ -89,15 +89,46 @@ fn display_strfile_header(header: StrfileHeader) {
 }
 
 
-fn load_raw_quotes(filename: String) -> Vec<String> {
+fn read_quote_from_file(reader: &mut BufReader<File>, delim: &u8) -> String {
+    let mut quote = String::new();
+    let mut buffer = String::new();
+    let mut found = false;
+
+    let bytes  = vec![*delim, 10];
+    let separator = String::from_utf8(bytes).unwrap();
+
+    while !found {
+        reader.read_line(&mut buffer).unwrap();
+        if buffer.len() > 0 && buffer != separator {
+            quote.push_str(&buffer);
+            buffer.clear();
+        } else {
+            found = true;
+        }
+    };
+
+    quote
+}
+
+
+fn load_indexed_quotes(filename: String, header: StrfileHeader) -> Result<Vec<String>, Error>{
+    let mut quotes = Vec::new();
+    let file = try!(File::open(filename));
+    let mut reader = BufReader::new(file);
+
+    for offset in header.offsets {
+        try!(reader.seek(SeekFrom::Start(offset as u64)));
+        let quote = read_quote_from_file(&mut reader, &header.delim);
+        quotes.push(quote);
+    }
+    Ok(quotes)
+}
+
+
+fn load_raw_quotes(filename: String) -> Result<Vec<String>, Error> {
 	let mut quotes = Vec::new();
 
-	let f = match File::open(filename) {
-		Ok(file) => file,
-		Err(e) => {
-			panic!("{}", e);
-		}
-	};
+	let f = try!(File::open(filename));
     let file = BufReader::new(&f);
     let mut quote = "".to_string();
     for line in file.lines() {
@@ -111,7 +142,7 @@ fn load_raw_quotes(filename: String) -> Vec<String> {
     	}
     }
 
-    quotes
+    Ok(quotes)
 }
 
 fn tcp_handler(bind_addr: String, quotes: &Vec<String>) {
@@ -160,12 +191,16 @@ fn main() {
 	let bind_addr_str = matches.value_of("ADDR").unwrap_or("127.0.0.1:17").to_string();
 	let quotes_fn = matches.value_of("FILENAME").unwrap().to_string();
 
-	match read_strfile_header(quotes_fn.clone() + ".dat") {
-		Ok(h) => display_strfile_header(h),
-		Err(e) => println!("{:?}", e)
-	};
+	let header = read_strfile_header(quotes_fn.clone() + ".dat");
+    let quotes = match header {
+        Ok(h) => {
+            display_strfile_header(&h);
+            load_indexed_quotes(quotes_fn.clone(), h).unwrap()
+        },
+        Err(_) => load_raw_quotes(quotes_fn).unwrap()
+    };
 
-	let shared_quotes = Arc::new(load_raw_quotes(quotes_fn));
+	let shared_quotes = Arc::new(quotes);
 
 	let udp_bind_addr = bind_addr_str.clone();
 	let tcp_bind_addr = bind_addr_str.clone();

@@ -1,3 +1,4 @@
+
 extern crate rand;
 extern crate clap;
 extern crate byteorder;
@@ -22,6 +23,12 @@ use std::thread;
 
 use byteorder::{BigEndian, ReadBytesExt};
 
+enum Flags {
+    Random = 0x1,
+    Ordered = 0x2,
+    Rotated = 0x4,
+    HasComments = 0x8
+}
 
 struct StrfileHeader {
     version: u32,
@@ -31,6 +38,28 @@ struct StrfileHeader {
     flags: u32,
     delim: u8,
     offsets: Vec<u32>,
+}
+
+impl StrfileHeader {
+    fn flag_is_set(&self, mask: Flags) -> bool {
+        self.flags & (mask as u32) == 1
+    }
+
+    fn is_random(&self) -> bool {
+        self.flag_is_set(Flags::Random)
+    }
+
+    fn is_rotated(&self) -> bool {
+        self.flag_is_set(Flags::Rotated)
+    }
+
+    fn is_ordered(&self) -> bool {
+        self.flag_is_set(Flags::Ordered)
+    }
+
+    fn has_comments(&self) -> bool {
+        self.flag_is_set(Flags::HasComments)
+    }
 }
 
 fn rot13(c: char) -> char {
@@ -88,14 +117,10 @@ fn display_strfile_header(header: &StrfileHeader) {
 	println!("Shortest:\t{}", header.shortest_length);
 	println!("Delimeter:\t{:?}", header.delim as char);
 
-	let flag_set = |mask| {
-		if header.flags & mask == 1 { "yes" } else { "no" }
-	};
-
-	println!("Randomized:\t{}", flag_set(0x1));	
-	println!("Ordered:\t{}", flag_set(0x2));
-	println!("Encrypted:\t{}", flag_set(0x4));	
-	println!("Comments:\t{}\n", flag_set(0x8));
+	println!("Randomized:\t{}", header.is_random());
+	println!("Ordered:\t{}", header.is_ordered());
+	println!("ROT13:\t\t{}", header.is_rotated());
+	println!("Comments:\t{}\n", header.has_comments());
 }
 
 
@@ -121,15 +146,15 @@ fn read_quote_from_file(reader: &mut BufReader<File>, delim: &u8) -> String {
 }
 
 
-fn load_indexed_quotes(filename: String, header: StrfileHeader) -> Result<Vec<String>, Error>{
+fn load_indexed_quotes(filename: String, header: &StrfileHeader) -> Result<Vec<String>, Error>{
     let mut quotes = Vec::new();
     let file = try!(File::open(filename));
     let mut reader = BufReader::new(file);
 
-    for offset in header.offsets {
-        try!(reader.seek(SeekFrom::Start(offset as u64)));
+    for offset in &header.offsets {
+        try!(reader.seek(SeekFrom::Start(*offset as u64)));
         let quote = read_quote_from_file(&mut reader, &header.delim);
-        if (header.flags & 0x4) == 1 {
+        if header.is_rotated() {
             quotes.push(quote.chars().map(rot13).collect::<String>());
         } else {
             quotes.push(quote);
@@ -209,7 +234,7 @@ fn main() {
     let quotes = match header {
         Ok(h) => {
             display_strfile_header(&h);
-            load_indexed_quotes(quotes_fn.clone(), h).unwrap()
+            load_indexed_quotes(quotes_fn.clone(), &h).unwrap()
         },
         Err(_) => load_raw_quotes(quotes_fn).unwrap()
     };

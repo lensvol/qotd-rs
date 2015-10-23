@@ -33,6 +33,16 @@ struct StrfileHeader {
     offsets: Vec<u32>,
 }
 
+fn rot13(c: char) -> char {
+    let base = match c {
+        'a'...'z' => 'a' as u8,
+        'A'...'Z' => 'A' as u8,
+        _ => return c
+    };
+
+    let rotated = ((c as u8) - base + 13) % 26;
+    (rotated + base) as char
+}
 
 fn read_strfile_header(filename: String) -> Result<StrfileHeader, Error> {
     let mut header = StrfileHeader {
@@ -119,7 +129,11 @@ fn load_indexed_quotes(filename: String, header: StrfileHeader) -> Result<Vec<St
     for offset in header.offsets {
         try!(reader.seek(SeekFrom::Start(offset as u64)));
         let quote = read_quote_from_file(&mut reader, &header.delim);
-        quotes.push(quote);
+        if (header.flags & 0x4) == 1 {
+            quotes.push(quote.chars().map(rot13).collect::<String>());
+        } else {
+            quotes.push(quote);
+        }
     }
     Ok(quotes)
 }

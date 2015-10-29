@@ -1,7 +1,8 @@
-
 extern crate rand;
 extern crate clap;
 extern crate byteorder;
+
+extern crate qotd_rs;
 
 use clap::App;
 use rand::Rng;
@@ -23,44 +24,7 @@ use std::thread;
 
 use byteorder::{BigEndian, ReadBytesExt};
 
-enum Flags {
-    Random = 0x1,
-    Ordered = 0x2,
-    Rotated = 0x4,
-    HasComments = 0x8
-}
-
-struct StrfileHeader {
-    version: u32,
-    number_of_strings: u32,
-    longest_length: u32,
-    shortest_length: u32,
-    flags: u32,
-    delim: u8,
-    offsets: Vec<u32>,
-}
-
-impl StrfileHeader {
-    fn flag_is_set(&self, mask: Flags) -> bool {
-        self.flags & (mask as u32) == 1
-    }
-
-    fn is_random(&self) -> bool {
-        self.flag_is_set(Flags::Random)
-    }
-
-    fn is_rotated(&self) -> bool {
-        self.flag_is_set(Flags::Rotated)
-    }
-
-    fn is_ordered(&self) -> bool {
-        self.flag_is_set(Flags::Ordered)
-    }
-
-    fn has_comments(&self) -> bool {
-        self.flag_is_set(Flags::HasComments)
-    }
-}
+use qotd_rs::strfile::StrfileHeader;
 
 fn rot13(c: char) -> char {
     let base = match c {

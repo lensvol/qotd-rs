@@ -34,6 +34,11 @@ fn rot13(c: char) -> char {
     (rotated + base) as char
 }
 
+#[test]
+fn rot13_test() {
+    assert!("Hello, world!".to_owned() == "Uryyb, jbeyq!".to_owned().chars().map(rot13).collect::<String>());
+}
+
 fn display_strfile_header(header: &StrfileHeader) {
     println!("Version:\t{}", header.version);
 	println!("Strings:\t{}", header.number_of_strings);
@@ -46,7 +51,6 @@ fn display_strfile_header(header: &StrfileHeader) {
 	println!("ROT13:\t\t{}", header.is_rotated());
 	println!("Comments:\t{}\n", header.has_comments());
 }
-
 
 fn read_quote_from_file(reader: &mut BufReader<File>, delim: &u8) -> String {
     let mut quote = String::new();

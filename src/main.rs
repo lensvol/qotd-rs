@@ -36,7 +36,9 @@ fn rot13(c: char) -> char {
 
 #[test]
 fn rot13_test() {
-    assert!("Hello, world!".to_owned() == "Uryyb, jbeyq!".to_owned().chars().map(rot13).collect::<String>());
+    let original_str = "Hello, world!".to_owned();
+    let encrypted_str = "Uryyb, jbeyq!".to_owned();
+    assert!(original_str == encrypted_str.chars().map(rot13).collect::<String>());
 }
 
 fn display_strfile_header(header: &StrfileHeader) {

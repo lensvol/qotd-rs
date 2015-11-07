@@ -10,7 +10,8 @@ use std::fs::File;
 
 use byteorder::{BigEndian, ReadBytesExt};
 
-pub struct StrfileHeader {
+#[derive(Debug)]
+pub struct Strfile {
     pub version: u32,
     pub number_of_strings: u32,
     pub longest_length: u32,
@@ -66,7 +67,7 @@ fn read_quote_from_file(reader: &mut BufReader<File>, delim: &u8) -> String {
     quote
 }
 
-impl StrfileHeader {
+impl Strfile {
     fn flag_is_set(&self, mask: Flags) -> bool {
         self.flags & (mask as u32) == 1
     }
@@ -104,7 +105,7 @@ impl StrfileHeader {
         Ok(quotes)
     }
 
-    pub fn parse(filename: String) -> Result<StrfileHeader, Error> {
+    pub fn parse(filename: String) -> Result<Strfile, Error> {
         let mut header_field = [0u8; 21];
 
         let handle = try!(File::open(filename.clone()));
@@ -129,7 +130,7 @@ impl StrfileHeader {
             offsets.push(offset);
         }
 
-        let header = StrfileHeader {
+        let header = Strfile {
             version: version,
             number_of_strings: number_of_strings,
             longest_length: longest_length,

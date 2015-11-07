@@ -18,9 +18,9 @@ use std::net::UdpSocket;
 use std::sync::Arc;
 use std::thread;
 
-use qotd_rs::strfile::StrfileHeader;
+use qotd_rs::strfile::Strfile;
 
-fn display_strfile_header(header: &StrfileHeader) {
+fn display_strfile_header(header: &Strfile) {
     println!("Version:\t{}", header.version);
     println!("Strings:\t{}", header.number_of_strings);
     println!("Longest:\t{}", header.longest_length);
@@ -99,7 +99,7 @@ fn main() {
     let bind_addr_str = matches.value_of("ADDR").unwrap_or("127.0.0.1:17").to_string();
     let quotes_fn = matches.value_of("FILENAME").unwrap().to_string();
 
-    let header = StrfileHeader::parse(quotes_fn.clone() + ".dat");
+    let header = Strfile::parse(quotes_fn.clone() + ".dat");
     let quotes = match header {
         Ok(h) => {
             display_strfile_header(&h);

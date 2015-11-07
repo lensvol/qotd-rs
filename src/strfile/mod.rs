@@ -24,14 +24,14 @@ pub enum Flags {
     Random = 0x1,
     Ordered = 0x2,
     Rotated = 0x4,
-    HasComments = 0x8
+    HasComments = 0x8,
 }
 
 fn rot13(c: char) -> char {
     let base = match c {
         'a'...'z' => 'a' as u8,
         'A'...'Z' => 'A' as u8,
-        _ => return c
+        _ => return c,
     };
 
     let rotated = ((c as u8) - base + 13) % 26;
@@ -45,12 +45,12 @@ fn rot13_test() {
     assert!(original_str == encrypted_str.chars().map(rot13).collect::<String>());
 }
 
-fn read_quote_from_file(reader: &mut BufReader<File>, delim: &u8) -> String    {
+fn read_quote_from_file(reader: &mut BufReader<File>, delim: &u8) -> String {
     let mut quote = String::new();
     let mut buffer = String::new();
     let mut found = false;
 
-    let bytes  = vec![*delim, 10];
+    let bytes = vec![*delim, 10];
     let separator = String::from_utf8(bytes).unwrap();
 
     while !found {
@@ -61,7 +61,7 @@ fn read_quote_from_file(reader: &mut BufReader<File>, delim: &u8) -> String    {
         } else {
             found = true;
         }
-    };
+    }
 
     quote
 }
@@ -87,7 +87,7 @@ impl StrfileHeader {
         self.flag_is_set(Flags::HasComments)
     }
 
-    pub fn read_quotes(&self, filename: String) -> Result<Vec<String>, Error>{
+    pub fn read_quotes(&self, filename: String) -> Result<Vec<String>, Error> {
         let mut quotes = Vec::new();
         let file = try!(File::open(filename));
         let mut reader = BufReader::new(file);
@@ -104,8 +104,8 @@ impl StrfileHeader {
         Ok(quotes)
     }
 
-    pub fn parse(filename: String) -> Result<StrfileHeader, Error>  {
-	    let mut header_field = [0u8; 21];
+    pub fn parse(filename: String) -> Result<StrfileHeader, Error> {
+        let mut header_field = [0u8; 21];
 
         let handle = try!(File::open(filename.clone()));
         let mut file = BufReader::new(&handle);
@@ -121,7 +121,7 @@ impl StrfileHeader {
         let mut offsets = Vec::new();
 
         try!(file.seek(SeekFrom::Current(3)));
-        for _ in 1 .. number_of_strings + 1 {
+        for _ in 1..number_of_strings + 1 {
             let mut raw_offset = [0u8; 4];
             try!(file.read(&mut raw_offset));
             let mut buf = Cursor::new(&raw_offset[..]);
@@ -129,7 +129,7 @@ impl StrfileHeader {
             offsets.push(offset);
         }
 
-        let header =  StrfileHeader {
+        let header = StrfileHeader {
             version: version,
             number_of_strings: number_of_strings,
             longest_length: longest_length,
@@ -141,4 +141,3 @@ impl StrfileHeader {
         Ok(header)
     }
 }
-

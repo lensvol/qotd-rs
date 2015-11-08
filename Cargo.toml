@@ -1,6 +1,6 @@
 [package]
 name = "qotd-rs"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Kirill Borisov <lensvol@gmail.com>"]
 
 [dependencies]
@@ -8,3 +8,4 @@ rand = "0.3.0"
 chrono = "0.2.16"
 clap = "1.4.0"
 byteorder = "0.3.13"
+strfile = "0.1.0"

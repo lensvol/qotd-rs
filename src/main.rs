@@ -1,8 +1,7 @@
-extern crate rand;
 extern crate clap;
+extern crate rand;
+extern crate strfile;
 extern crate byteorder;
-
-extern crate qotd_rs;
 
 use clap::App;
 use rand::Rng;
@@ -18,7 +17,7 @@ use std::net::UdpSocket;
 use std::sync::Arc;
 use std::thread;
 
-use qotd_rs::strfile::Strfile;
+use strfile::Strfile;
 
 fn display_strfile_header(header: &Strfile) {
     println!("Version:\t{}", header.version);

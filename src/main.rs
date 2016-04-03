@@ -88,7 +88,7 @@ fn choose_random_one(quotes: &[String]) -> &String {
 
 fn main() {
     let matches = App::new("qotd-rs")
-                      .version("0.1")
+                      .version("0.2.0")
                       .author("Kirill Borisov <borisov.kir@gmail.com>")
                       .args_from_usage("-b --bind=[ADDR] 'Bind at specified address.'
 							\

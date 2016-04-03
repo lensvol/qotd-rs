@@ -17,7 +17,7 @@ use std::net::UdpSocket;
 use std::sync::Arc;
 use std::thread;
 
-use strfile::Strfile;
+use strfile::{Strfile, Flags};
 
 fn display_strfile_header(header: &Strfile) {
     println!("Version:\t{}", header.version);
@@ -26,10 +26,10 @@ fn display_strfile_header(header: &Strfile) {
     println!("Shortest:\t{}", header.shortest_length);
     println!("Delimeter:\t{:?}", header.delim as char);
 
-    println!("Randomized:\t{}", header.is_random());
-    println!("Ordered:\t{}", header.is_ordered());
-    println!("ROT13:\t\t{}", header.is_rotated());
-    println!("Comments:\t{}\n", header.has_comments());
+    println!("Randomized:\t{}", header.is_flag_set(Flags::Random));
+    println!("Ordered:\t{}", header.is_flag_set(Flags::Ordered));
+    println!("ROT13:\t\t{}", header.is_flag_set(Flags::Rotated));
+    println!("Comments:\t{}\n", header.is_flag_set(Flags::HasComments));
 }
 
 fn load_raw_quotes(filename: String) -> Result<Vec<String>, Error> {

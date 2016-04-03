@@ -37,12 +37,12 @@ fn load_raw_quotes(filename: String) -> Result<Vec<String>, Error> {
 
     let f = try!(File::open(filename));
     let file = BufReader::new(&f);
-    let mut quote = "".to_string();
+    let mut quote = "".to_owned();
     for line in file.lines() {
         let l = line.unwrap();
         if l == "%" {
             quotes.push(quote);
-            quote = "".to_string();
+            quote = "".to_owned();
         } else {
             quote.push_str(&l);
             quote.push_str(&"\n");
@@ -52,12 +52,12 @@ fn load_raw_quotes(filename: String) -> Result<Vec<String>, Error> {
     Ok(quotes)
 }
 
-fn tcp_handler(bind_addr: String, quotes: &Vec<String>) {
+fn tcp_handler(bind_addr: String, quotes: &[String]) {
     match TcpListener::bind(bind_addr.trim()) {
         Ok(listener) => {
             for stream in listener.incoming() {
                 let mut stream = stream.unwrap();
-                let ref quote = choose_random_one(quotes);
+                let quote = &choose_random_one(quotes);
                 stream.write(&quote.as_bytes()).unwrap();
             }
         }
@@ -66,14 +66,14 @@ fn tcp_handler(bind_addr: String, quotes: &Vec<String>) {
 
 }
 
-fn udp_handler(bind_addr: String, quotes: &Vec<String>) {
+fn udp_handler(bind_addr: String, quotes: &[String]) {
     match UdpSocket::bind(bind_addr.trim()) {
         Ok(socket) => {
             loop {
                 let mut buf = [0; 10];
                 let (_, src) = socket.recv_from(&mut buf).unwrap();
 
-                let ref quote = choose_random_one(quotes);
+                let quote = &choose_random_one(quotes);
                 socket.send_to(&quote.as_bytes(), &src).unwrap();
             }
         }
@@ -81,7 +81,7 @@ fn udp_handler(bind_addr: String, quotes: &Vec<String>) {
     }
 }
 
-fn choose_random_one(quotes: &Vec<String>) -> &String {
+fn choose_random_one(quotes: &[String]) -> &String {
     let random_index = rand::thread_rng().gen_range(0, quotes.len());
     &quotes[random_index]
 }
@@ -95,8 +95,8 @@ fn main() {
                                         <FILENAME> 'Sets quotes file to use.'")
                       .get_matches();
 
-    let bind_addr_str = matches.value_of("ADDR").unwrap_or("127.0.0.1:17").to_string();
-    let quotes_fn = matches.value_of("FILENAME").unwrap().to_string();
+    let bind_addr_str = matches.value_of("ADDR").unwrap_or("127.0.0.1:17").to_owned();
+    let quotes_fn = matches.value_of("FILENAME").unwrap().to_owned();
 
     let header = Strfile::parse(quotes_fn.clone() + ".dat");
     let quotes = match header {
